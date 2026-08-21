@@ -218,7 +218,52 @@
 
         /* METRICS GRID & MULTICOLOR CARDS */
         .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
-        .metric-card { background: var(--card-bg); backdrop-filter: blur(16px); padding: 16px; border-radius: 16px; border: 1px solid var(--card-border); position: relative; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .metric-card { background: var(--card-bg); backdrop-filter: blur(16px); padding: 16px; border-radius: 16px; border: 1px solid var(--card-border); position: relative; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.08); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .metric-card:active { transform: scale(0.975); }
+        .metric-card .drill-hint { position: absolute; bottom: 9px; right: 11px; font-size: 0.6rem; color: var(--text-muted); opacity: 0.5; }
+
+        /* DRILL-DOWN MODAL */
+        .drill-box { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; width: 100%; max-width: 420px; max-height: 84vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.55), 0 0 30px var(--accent-glow); animation: scaleUp 0.2s ease-out; overflow: hidden; }
+        .drill-head { display: flex; align-items: center; gap: 10px; padding: 16px 18px 12px; border-bottom: 1px solid var(--card-border); flex-shrink: 0; }
+        .drill-head-txt { flex: 1; min-width: 0; text-align: left; }
+        .drill-head h3 { font-size: 1rem; font-weight: 800; color: var(--text-main); }
+        .drill-head .drill-sub { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+        .drill-head button { background: transparent; border: none; color: var(--text-muted); font-size: 1rem; cursor: pointer; padding: 6px 8px; border-radius: 8px; flex-shrink: 0; }
+        .drill-head button:hover { color: var(--accent-primary); background: rgba(212,175,55,0.08); }
+        .drill-body { padding: 16px 18px 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .drill-total { text-align: center; margin-bottom: 4px; }
+        .drill-total h2 { font-size: 1.5rem; font-weight: 800; word-break: break-all; }
+        .drill-total span { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+
+        .donut-wrap { display: flex; justify-content: center; margin: 14px 0 18px; }
+        .donut { width: 168px; height: 168px; transform: rotate(-90deg); }
+        .donut-seg { transition: stroke-dasharray 0.5s ease; }
+        .donut-center { position: absolute; text-align: center; }
+
+        .break-row { display: flex; align-items: center; gap: 10px; padding: 10px 11px; border-radius: 10px; background: rgba(150,150,150,0.05); border: 1px solid rgba(150,150,150,0.1); margin-bottom: 7px; cursor: pointer; text-align: left; width: 100%; }
+        .break-row:active { transform: scale(0.99); }
+        .break-dot { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; flex-shrink: 0; }
+        .break-info { flex: 1; min-width: 0; }
+        .break-name { font-size: 0.83rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .break-meta { font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; }
+        .break-amt { text-align: right; flex-shrink: 0; }
+        .break-amt strong { font-size: 0.83rem; font-weight: 800; display: block; }
+        .break-amt span { font-size: 0.65rem; color: var(--text-muted); }
+        .break-bar { height: 4px; border-radius: 4px; background: rgba(150,150,150,0.15); margin-top: 6px; overflow: hidden; }
+        .break-bar div { height: 100%; border-radius: 4px; }
+
+        .drill-empty { text-align: center; padding: 28px 16px; color: var(--text-muted); }
+        .drill-empty i { font-size: 1.8rem; opacity: 0.4; display: block; margin-bottom: 10px; }
+        .drill-empty p { font-size: 0.82rem; }
+        .drill-section-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.7px; color: var(--accent-primary); font-weight: 700; margin: 16px 0 8px; text-align: left; }
+
+        .txn-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 9px; background: rgba(150,150,150,0.04); border: 1px solid rgba(150,150,150,0.08); margin-bottom: 6px; text-align: left; }
+        .txn-row .txn-main { flex: 1; min-width: 0; }
+        .txn-row .txn-note { font-size: 0.79rem; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .txn-row .txn-sub { font-size: 0.64rem; color: var(--text-muted); margin-top: 2px; }
+        .txn-row .txn-amt { font-size: 0.81rem; font-weight: 800; flex-shrink: 0; }
+
+        .stat-note { font-size: 0.6rem; color: var(--text-muted); margin-top: 5px; line-height: 1.35; display: block; }
         .metric-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent-primary); }
         .metric-card.networth-card::before { background: var(--gold); }
         .metric-card.income-card::before { background: var(--green); }
@@ -665,6 +710,21 @@
     </div>
 </div>
 
+<!-- 11. DRILL-DOWN MODAL -->
+<div id="drillModal" class="modal-overlay hidden" style="z-index: 10002;">
+    <div class="drill-box">
+        <div class="drill-head">
+            <button id="drillBackBtn" class="hidden" title="Back" onclick="drillGoBack()"><i class="fa-solid fa-chevron-left"></i></button>
+            <div class="drill-head-txt">
+                <h3 id="drillTitle">Breakdown</h3>
+                <div class="drill-sub" id="drillSubtitle">All Time</div>
+            </div>
+            <button title="Close" onclick="closeDrillDown()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drill-body" id="drillBody"></div>
+    </div>
+</div>
+
 <!-- MAIN APP -->
 <div id="appScreen" class="app-container hidden">
     <nav>
@@ -728,22 +788,26 @@
         </div>
 
         <div class="metrics-grid">
-            <div class="metric-card networth-card">
-                <div class="card-head"><span id="lblNetworth" style="color: var(--gold);"><i class="fa-solid fa-vault"></i> Net Worth</span> <button class="btn-toggle-eye" onclick="toggleMetric('networth')"><i id="eye-networth" class="fa-solid fa-eye-slash"></i></button></div>
+            <div class="metric-card networth-card" onclick="openDrillDown('networth')">
+                <div class="card-head"><span id="lblNetworth" style="color: var(--gold);"><i class="fa-solid fa-vault"></i> Net Worth</span> <button class="btn-toggle-eye" onclick="event.stopPropagation(); toggleMetric('networth')"><i id="eye-networth" class="fa-solid fa-eye-slash"></i></button></div>
                 <h2 id="dispNetWorth">RM 0.00</h2>
                 <span class="metric-delta" id="dispNetWorthDelta">&nbsp;</span>
+                <i class="fa-solid fa-chevron-right drill-hint"></i>
             </div>
-            <div class="metric-card income-card">
-                <div class="card-head"><span id="lblIncome" style="color: var(--green);"><i class="fa-solid fa-arrow-trend-up"></i> Income</span> <button class="btn-toggle-eye" onclick="toggleMetric('income')"><i id="eye-income" class="fa-solid fa-eye-slash"></i></button></div>
+            <div class="metric-card income-card" onclick="openDrillDown('income')">
+                <div class="card-head"><span id="lblIncome" style="color: var(--green);"><i class="fa-solid fa-arrow-trend-up"></i> Income</span> <button class="btn-toggle-eye" onclick="event.stopPropagation(); toggleMetric('income')"><i id="eye-income" class="fa-solid fa-eye-slash"></i></button></div>
                 <h2 id="dispTotalIncome" style="color:var(--green);">RM 0.00</h2>
+                <i class="fa-solid fa-chevron-right drill-hint"></i>
             </div>
-            <div class="metric-card expense-card">
-                <div class="card-head"><span id="lblExpense" style="color: var(--red);"><i class="fa-solid fa-arrow-trend-down"></i> Expenses</span> <button class="btn-toggle-eye" onclick="toggleMetric('expense')"><i id="eye-expense" class="fa-solid fa-eye-slash"></i></button></div>
+            <div class="metric-card expense-card" onclick="openDrillDown('expense')">
+                <div class="card-head"><span id="lblExpense" style="color: var(--red);"><i class="fa-solid fa-arrow-trend-down"></i> Expenses</span> <button class="btn-toggle-eye" onclick="event.stopPropagation(); toggleMetric('expense')"><i id="eye-expense" class="fa-solid fa-eye-slash"></i></button></div>
                 <h2 id="dispTotalExpense" style="color:var(--red);">RM 0.00</h2>
+                <i class="fa-solid fa-chevron-right drill-hint"></i>
             </div>
-            <div class="metric-card cashflow-card">
-                <div class="card-head"><span id="lblCashflow" style="color: var(--blue);"><i class="fa-solid fa-scale-balanced"></i> Cash Flow</span> <button class="btn-toggle-eye" onclick="toggleMetric('cashflow')"><i id="eye-cashflow" class="fa-solid fa-eye-slash"></i></button></div>
+            <div class="metric-card cashflow-card" onclick="openDrillDown('cashflow')">
+                <div class="card-head"><span id="lblCashflow" style="color: var(--blue);"><i class="fa-solid fa-scale-balanced"></i> Cash Flow</span> <button class="btn-toggle-eye" onclick="event.stopPropagation(); toggleMetric('cashflow')"><i id="eye-cashflow" class="fa-solid fa-eye-slash"></i></button></div>
                 <h2 id="dispCashflow" style="color:var(--blue);">RM 0.00</h2>
+                <i class="fa-solid fa-chevron-right drill-hint"></i>
             </div>
         </div>
 
@@ -773,10 +837,12 @@
                     <div class="mini-stat-card stat-cyan">
                         <span>Savings Rate</span>
                         <h4 id="statSavingsRate" style="color: var(--cyan);">0.0%</h4>
+                        <span class="stat-note" id="noteSavingsRate">&nbsp;</span>
                     </div>
                     <div class="mini-stat-card stat-purple">
                         <span>Runway</span>
                         <h4 id="statRunway" style="color: var(--purple);">0.0 Mos</h4>
+                        <span class="stat-note" id="noteRunway">&nbsp;</span>
                     </div>
                 </div>
             </div>
@@ -1217,6 +1283,7 @@
 
     function lockAllVault() {
         isMasterLocked = true;
+        closeDrillDown();
         document.getElementById('masterLockIcon').className = "fa-solid fa-lock";
         for (let key in hiddenState) { hiddenState[key] = true; }
         localStorage.setItem('myr_hidden_state', JSON.stringify(hiddenState));
@@ -1619,6 +1686,340 @@
             sel.appendChild(opt);
         });
         sel.value = categories.some(c => c.id === prev) || prev === 'ALL' ? prev : 'ALL';
+    }
+
+    /* ============================================================
+       DRILL-DOWN ENGINE
+       Tapping a KPI card opens the records behind the number.
+       ============================================================ */
+
+    let drillState = null; // { kind } for level 1, remembered so Back works
+
+    // Which privacy key guards each card. A locked card must NEVER reveal
+    // its detail - tapping it asks for the PIN instead, exactly like the eye.
+    const DRILL_LOCK_KEY = {
+        networth: 'networth',
+        income: 'income',
+        expense: 'expense',
+        cashflow: 'cashflow'
+    };
+
+    function openDrillDown(kind) {
+        const lockKey = DRILL_LOCK_KEY[kind];
+        if (lockKey && hiddenState[lockKey]) {
+            // Locked: route to the PIN prompt rather than leaking the detail.
+            toggleMetric(lockKey);
+            return;
+        }
+        drillState = { kind: kind };
+        document.getElementById('drillBackBtn').classList.add('hidden');
+        renderDrillLevel1(kind);
+        document.getElementById('drillModal').classList.remove('hidden');
+    }
+
+    function closeDrillDown() {
+        document.getElementById('drillModal').classList.add('hidden');
+        drillState = null;
+    }
+
+    function drillGoBack() {
+        if (drillState) {
+            document.getElementById('drillBackBtn').classList.add('hidden');
+            renderDrillLevel1(drillState.kind);
+        }
+    }
+
+    function drillEmpty(msg) {
+        return `<div class="drill-empty"><i class="fa-solid fa-inbox"></i><p>${escapeHtml(msg)}</p></div>`;
+    }
+
+    // Builds an SVG donut. Circumference is normalised to 100 so each
+    // slice's dasharray is simply its percentage.
+    function buildDonut(slices, centerLabel, centerSub) {
+        const total = slices.reduce((s, x) => s + x.value, 0);
+        if (total <= 0) return '';
+
+        let offset = 25; // start at 12 o'clock
+        let segs = '';
+        slices.forEach(sl => {
+            const pct = (sl.value / total) * 100;
+            segs += `<circle class="donut-seg" cx="21" cy="21" r="15.915" fill="transparent"
+                        stroke="${sl.color}" stroke-width="5.5"
+                        stroke-dasharray="${pct.toFixed(3)} ${(100 - pct).toFixed(3)}"
+                        stroke-dashoffset="${offset.toFixed(3)}"></circle>`;
+            offset -= pct;
+        });
+
+        return `
+            <div class="donut-wrap" style="position: relative;">
+                <svg class="donut" viewBox="0 0 42 42">
+                    <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="rgba(150,150,150,0.12)" stroke-width="5.5"></circle>
+                    ${segs}
+                </svg>
+                <div class="donut-center" style="top:50%; left:50%; transform:translate(-50%,-50%);">
+                    <div style="font-size:0.95rem; font-weight:800; color:var(--text-main);">${centerLabel}</div>
+                    <div style="font-size:0.6rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">${centerSub}</div>
+                </div>
+            </div>`;
+    }
+
+    function breakdownRow(opts) {
+        const { color, icon, name, meta, amount, pct, onclick } = opts;
+        const tag = onclick ? 'button' : 'div';
+        const handler = onclick ? ` onclick="${onclick}"` : '';
+        return `
+            <${tag} class="break-row"${handler}>
+                <div class="break-dot" style="background:${hexToRgba(color, 0.15)}; color:${color}; border:1px solid ${hexToRgba(color, 0.3)};">
+                    <i class="fa-solid ${escapeHtml(icon)}"></i>
+                </div>
+                <div class="break-info">
+                    <div class="break-name">${escapeHtml(name)}</div>
+                    <div class="break-meta">${escapeHtml(meta)}</div>
+                    <div class="break-bar"><div style="width:${Math.max(2, pct).toFixed(1)}%; background:${color};"></div></div>
+                </div>
+                <div class="break-amt">
+                    <strong style="color:${color};">${amount}</strong>
+                    <span>${pct.toFixed(1)}%</span>
+                </div>
+            </${tag}>`;
+    }
+
+    function renderDrillLevel1(kind) {
+        const range = getPeriodRange(currentPeriod);
+        const periodTrans = getFilteredTransactions(currentPeriod);
+        const subEl = document.getElementById('drillSubtitle');
+        const titleEl = document.getElementById('drillTitle');
+        const body = document.getElementById('drillBody');
+
+        subEl.innerHTML = currentPeriod === 'ALL' ? 'All Time' : range.label;
+
+        if (kind === 'expense' || kind === 'income') {
+            const isIncome = kind === 'income';
+            titleEl.textContent = isIncome ? 'Income Breakdown' : 'Expense Breakdown';
+
+            const rows = periodTrans.filter(t => t.type === (isIncome ? 'INCOME' : 'EXPENSE'));
+            const total = rows.reduce((s, t) => s + t.amount, 0);
+
+            if (rows.length === 0) {
+                body.innerHTML = drillEmpty(`No ${isIncome ? 'income' : 'expenses'} recorded for this period.`);
+                return;
+            }
+
+            const map = {};
+            rows.forEach(t => {
+                if (!map[t.categoryId]) map[t.categoryId] = { sum: 0, count: 0 };
+                map[t.categoryId].sum += t.amount;
+                map[t.categoryId].count++;
+            });
+
+            const items = Object.keys(map)
+                .map(id => ({ cat: getCategory(id), ...map[id] }))
+                .sort((a, b) => b.sum - a.sum);
+
+            const donut = buildDonut(
+                items.map(i => ({ value: i.sum, color: i.cat.color })),
+                compactMoney(total),
+                `${items.length} categor${items.length === 1 ? 'y' : 'ies'}`
+            );
+
+            let html = `<div class="drill-total">
+                    <span>Total ${isIncome ? 'Income' : 'Expenses'}</span>
+                    <h2 style="color:${isIncome ? 'var(--green)' : 'var(--red)'};">${formatMoney(total)}</h2>
+                </div>${donut}`;
+
+            html += `<div class="drill-section-label">By Category &bull; tap to see records</div>`;
+            items.forEach(i => {
+                html += breakdownRow({
+                    color: i.cat.color,
+                    icon: i.cat.icon,
+                    name: i.cat.name,
+                    meta: `${i.count} record${i.count === 1 ? '' : 's'}`,
+                    amount: formatMoney(i.sum),
+                    pct: (i.sum / total) * 100,
+                    onclick: `drillIntoCategory('${i.cat.id}')`
+                });
+            });
+
+            body.innerHTML = html;
+            return;
+        }
+
+        if (kind === 'networth') {
+            titleEl.textContent = 'Net Worth Breakdown';
+            subEl.textContent = 'Current balances';
+
+            const total = banks.reduce((s, b) => s + b.balance, 0);
+
+            if (banks.length === 0) {
+                body.innerHTML = drillEmpty('No accounts added yet.');
+                return;
+            }
+
+            const sorted = [...banks].sort((a, b) => b.balance - a.balance);
+            const palette = ['#d4af37', '#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f97316', '#ec4899', '#84cc16'];
+            const positiveTotal = sorted.reduce((s, b) => s + Math.max(0, b.balance), 0);
+
+            const donut = positiveTotal > 0 ? buildDonut(
+                sorted.filter(b => b.balance > 0).map((b, i) => ({ value: b.balance, color: palette[i % palette.length] })),
+                compactMoney(total),
+                `${banks.length} account${banks.length === 1 ? '' : 's'}`
+            ) : '';
+
+            let html = `<div class="drill-total">
+                    <span>Total Net Worth</span>
+                    <h2 style="color:var(--gold);">${formatMoney(total)}</h2>
+                </div>${donut}`;
+
+            html += `<div class="drill-section-label">By Account</div>`;
+            sorted.forEach((b, i) => {
+                const color = b.balance < 0 ? 'var(--red)' : palette[i % palette.length];
+                const hex = b.balance < 0 ? '#f43f5e' : palette[i % palette.length];
+                const pct = positiveTotal > 0 ? (Math.max(0, b.balance) / positiveTotal) * 100 : 0;
+                const txnCount = transactions.filter(t => t.bank === b.name).length;
+                html += breakdownRow({
+                    color: hex,
+                    icon: 'fa-building-columns',
+                    name: b.name,
+                    meta: `${txnCount} record${txnCount === 1 ? '' : 's'}`,
+                    amount: formatMoney(b.balance),
+                    pct: pct
+                });
+            });
+
+            body.innerHTML = html;
+            return;
+        }
+
+        if (kind === 'cashflow') {
+            titleEl.textContent = 'Cash Flow Breakdown';
+
+            const inc = periodTrans.filter(t => t.type === 'INCOME');
+            const exp = periodTrans.filter(t => t.type === 'EXPENSE');
+            const totalIn = inc.reduce((s, t) => s + t.amount, 0);
+            const totalOut = exp.reduce((s, t) => s + t.amount, 0);
+            const net = totalIn - totalOut;
+
+            if (periodTrans.length === 0) {
+                body.innerHTML = drillEmpty('No transactions recorded for this period.');
+                return;
+            }
+
+            const biggest = Math.max(totalIn, totalOut) || 1;
+
+            let html = `<div class="drill-total">
+                    <span>Net Cash Flow</span>
+                    <h2 style="color:${net >= 0 ? 'var(--green)' : 'var(--red)'};">${net >= 0 ? '+' : '-'}${formatMoney(Math.abs(net))}</h2>
+                </div>`;
+
+            html += `<div class="drill-section-label">In vs Out</div>`;
+            html += breakdownRow({
+                color: '#10b981', icon: 'fa-arrow-trend-up', name: 'Money In',
+                meta: `${inc.length} record${inc.length === 1 ? '' : 's'}`,
+                amount: formatMoney(totalIn), pct: (totalIn / biggest) * 100
+            });
+            html += breakdownRow({
+                color: '#f43f5e', icon: 'fa-arrow-trend-down', name: 'Money Out',
+                meta: `${exp.length} record${exp.length === 1 ? '' : 's'}`,
+                amount: formatMoney(totalOut), pct: (totalOut / biggest) * 100
+            });
+
+            // The five records that moved the needle most, either direction.
+            const movers = [...periodTrans].sort((a, b) => b.amount - a.amount).slice(0, 5);
+            html += `<div class="drill-section-label">Biggest Movers</div>`;
+            movers.forEach(t => {
+                const isIn = t.type === 'INCOME';
+                const c = getCategory(t.categoryId);
+                html += `
+                    <div class="txn-row">
+                        <div class="break-dot" style="background:${hexToRgba(c.color, 0.15)}; color:${c.color}; border:1px solid ${hexToRgba(c.color, 0.3)};">
+                            <i class="fa-solid ${escapeHtml(c.icon)}"></i>
+                        </div>
+                        <div class="txn-main">
+                            <div class="txn-note">${escapeHtml(t.note || c.name)}</div>
+                            <div class="txn-sub">${escapeHtml(t.date)} &bull; ${escapeHtml(c.name)} &bull; ${escapeHtml(t.bank || '-')}</div>
+                        </div>
+                        <div class="txn-amt" style="color:${isIn ? 'var(--green)' : 'var(--red)'};">${isIn ? '+' : '-'}${formatMoney(t.amount)}</div>
+                    </div>`;
+            });
+
+            body.innerHTML = html;
+            return;
+        }
+    }
+
+    // Level 2: the actual records inside one category.
+    function drillIntoCategory(catId, forceMonth) {
+        const c = getCategory(catId);
+        const body = document.getElementById('drillBody');
+        const titleEl = document.getElementById('drillTitle');
+        const subEl = document.getElementById('drillSubtitle');
+
+        let rows, scopeLabel;
+        if (forceMonth) {
+            const monthStr = new Date().toISOString().slice(0, 7);
+            rows = transactions.filter(t => t.categoryId === catId && t.date && t.date.startsWith(monthStr));
+            scopeLabel = 'This Month';
+        } else {
+            rows = getFilteredTransactions(currentPeriod).filter(t => t.categoryId === catId);
+            scopeLabel = currentPeriod === 'ALL' ? 'All Time' : getPeriodRange(currentPeriod).shortLabel;
+        }
+
+        titleEl.textContent = c.name;
+        subEl.textContent = scopeLabel;
+        if (drillState) document.getElementById('drillBackBtn').classList.remove('hidden');
+
+        if (rows.length === 0) {
+            body.innerHTML = drillEmpty('No records in this category for the selected period.');
+            return;
+        }
+
+        const total = rows.reduce((s, t) => s + t.amount, 0);
+        const sorted = [...rows].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+        let html = `<div class="drill-total">
+                <span>${escapeHtml(c.name)} Total</span>
+                <h2 style="color:${c.color};">${formatMoney(total)}</h2>
+            </div>
+            <div class="drill-section-label">${rows.length} Record${rows.length === 1 ? '' : 's'}</div>`;
+
+        sorted.forEach(t => {
+            const isIn = t.type === 'INCOME';
+            html += `
+                <div class="txn-row">
+                    <div class="txn-main">
+                        <div class="txn-note">${escapeHtml(t.note || '(no note)')}</div>
+                        <div class="txn-sub">${escapeHtml(t.date)} &bull; ${escapeHtml(t.bank || '-')}</div>
+                    </div>
+                    <div class="txn-amt" style="color:${isIn ? 'var(--green)' : 'var(--red)'};">${isIn ? '+' : '-'}${formatMoney(t.amount)}</div>
+                </div>`;
+        });
+
+        body.innerHTML = html;
+    }
+
+    // Entry point used by the budget bars - always scoped to this month,
+    // because that is the window a monthly budget describes.
+    function openBudgetDrill(catId) {
+        if (hiddenState.history) { toggleMetric('history'); return; }
+        drillState = null;
+        document.getElementById('drillBackBtn').classList.add('hidden');
+        drillIntoCategory(catId, true);
+        document.getElementById('drillModal').classList.remove('hidden');
+    }
+
+    // Donut centres are small - a full "RM 1,234,567.00" would overflow,
+    // so shorten to 1.2M / 12.3k while keeping the currency conversion.
+    function compactMoney(amount) {
+        const rate = currencyRates[currentCurrency] || 1.0;
+        const symbol = currencySymbols[currentCurrency] || 'RM';
+        const v = amount * rate;
+        const abs = Math.abs(v);
+        let out;
+        if (abs >= 1e9) out = (v / 1e9).toFixed(1) + 'B';
+        else if (abs >= 1e6) out = (v / 1e6).toFixed(1) + 'M';
+        else if (abs >= 1e4) out = (v / 1e3).toFixed(1) + 'k';
+        else out = v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        return `${symbol} ${out}`;
     }
 
     function formatMoney(amount) {
@@ -2322,6 +2723,8 @@
             item.style.padding = "12px";
             item.style.borderRadius = "10px";
             item.style.border = "1px solid rgba(150,150,150,0.1)";
+            item.style.cursor = "pointer";
+            item.onclick = () => openBudgetDrill(cat.id);
 
             const limitLabel = limit > 0 ? formatMoney(limit) : 'No limit';
 
@@ -2486,6 +2889,21 @@
         document.getElementById('statRunway').textContent = monthlyBurn > 0
             ? `${runwayMonths.toFixed(1)} Mos`
             : '--';
+
+        // These two are formulas, not sums - so instead of a drill-down they
+        // get a line explaining where the number actually comes from.
+        const noteSave = document.getElementById('noteSavingsRate');
+        const noteRun = document.getElementById('noteRunway');
+        if (noteSave) {
+            noteSave.textContent = totalIncome > 0
+                ? `Kept ${formatMoney(totalIncome - totalExpense)} of ${formatMoney(totalIncome)}`
+                : 'No income this period';
+        }
+        if (noteRun) {
+            noteRun.textContent = monthlyBurn > 0
+                ? `Net worth ÷ ${formatMoney(monthlyBurn)}/mo burn`
+                : 'No spending recorded yet';
+        }
 
         const overlayEl = document.getElementById('chartLockedOverlay');
         if (hiddenState.chart) {
