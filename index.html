@@ -264,6 +264,30 @@
         .txn-row .txn-amt { font-size: 0.81rem; font-weight: 800; flex-shrink: 0; }
 
         .stat-note { font-size: 0.6rem; color: var(--text-muted); margin-top: 5px; line-height: 1.35; display: block; }
+
+        /* TOGGLE SWITCH */
+        .toggle-row { display: flex; align-items: center; gap: 12px; width: 100%; background: rgba(150,150,150,0.05); border: 1px solid rgba(150,150,150,0.12); border-radius: 10px; padding: 11px 12px; cursor: pointer; text-align: left; }
+        .toggle-txt { flex: 1; min-width: 0; }
+        .toggle-txt strong { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
+        .toggle-txt em { display: block; font-size: 0.65rem; color: var(--text-muted); font-style: normal; margin-top: 2px; }
+        .toggle-pill { width: 42px; height: 24px; border-radius: 12px; background: rgba(150,150,150,0.25); flex-shrink: 0; position: relative; transition: background 0.2s ease; }
+        .toggle-knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.2s ease; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+        .toggle-row.on .toggle-pill { background: var(--accent-primary); }
+        .toggle-row.on .toggle-knob { transform: translateX(18px); }
+
+        /* RECURRING */
+        .rec-row { display: flex; align-items: center; gap: 10px; background: rgba(150,150,150,0.05); border: 1px solid rgba(150,150,150,0.12); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; text-align: left; }
+        .rec-row.due { border-color: var(--accent-primary); background: rgba(212,175,55,0.07); }
+        .rec-info { flex: 1; min-width: 0; }
+        .rec-name { font-size: 0.84rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rec-meta { font-size: 0.64rem; color: var(--text-muted); margin-top: 3px; }
+        .rec-amt { font-size: 0.84rem; font-weight: 800; flex-shrink: 0; }
+        .rec-actions { display: flex; gap: 3px; flex-shrink: 0; }
+        .rec-actions button { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px 7px; font-size: 0.8rem; border-radius: 6px; }
+        .rec-actions button:hover { color: var(--accent-primary); background: rgba(212,175,55,0.08); }
+        .rec-actions button.del:hover { color: var(--red); background: rgba(244,63,94,0.08); }
+        .rec-check { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--card-border); background: var(--input-bg); flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; color: transparent; font-size: 0.65rem; padding: 0; }
+        .rec-check.on { background: var(--accent-primary); border-color: var(--accent-primary); color: #000; }
         .metric-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent-primary); }
         .metric-card.networth-card::before { background: var(--gold); }
         .metric-card.income-card::before { background: var(--green); }
@@ -704,6 +728,17 @@
             <div id="catIconGrid" class="icon-grid"></div>
         </div>
 
+        <div class="modal-input-group">
+            <label>Trading Performance</label>
+            <button type="button" id="catTradeToggle" class="toggle-row" onclick="toggleCatTradeResult()">
+                <span class="toggle-txt">
+                    <strong>Count as trade outcome</strong>
+                    <em>Income = win, expense = loss</em>
+                </span>
+                <span class="toggle-pill"><span class="toggle-knob"></span></span>
+            </button>
+        </div>
+
         <div id="catEditorError" class="modal-error"></div>
         <div class="modal-actions">
             <button class="modal-btn-cancel" onclick="closeCategoryEditor()">Cancel</button>
@@ -790,6 +825,149 @@
     </div>
 </div>
 
+<!-- 13. BULK MOVE CATEGORY MODAL -->
+<div id="bulkMoveModal" class="modal-overlay hidden" style="z-index: 10001;">
+    <div class="modal-box" style="max-width: 370px; text-align: left;">
+        <div class="modal-icon" style="margin-left: auto; margin-right: auto;"><i class="fa-solid fa-right-left"></i></div>
+        <h3 style="text-align: center;">Move Records</h3>
+        <p style="text-align: center;" id="bulkMoveDesc">Move all records to another category.</p>
+
+        <div class="modal-input-group">
+            <label>Move To</label>
+            <select id="bulkMoveTarget" class="modal-input" style="letter-spacing: normal; text-align: left; height: 48px;"></select>
+        </div>
+
+        <div id="bulkMoveError" class="modal-error"></div>
+
+        <div style="display: grid; gap: 9px; margin-top: 14px;">
+            <button class="modal-btn-confirm" onclick="executeBulkMove(false)">
+                <i class="fa-solid fa-arrow-right-arrow-left"></i> Move Only &mdash; keep both categories
+            </button>
+            <button class="modal-btn-confirm" style="background: var(--red); color: #fff;" onclick="executeBulkMove(true)">
+                <i class="fa-solid fa-code-merge"></i> Merge &mdash; move, then delete this category
+            </button>
+            <button class="modal-btn-cancel" onclick="closeBulkMove()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- 14. RECURRING MANAGER -->
+<div id="recurringModal" class="modal-overlay hidden" style="z-index: 10001;">
+    <div class="modal-box" style="max-width: 400px; text-align: left;">
+        <div class="modal-icon" style="margin-left: auto; margin-right: auto;"><i class="fa-solid fa-repeat"></i></div>
+        <h3 style="text-align: center;">Recurring Transactions</h3>
+        <p style="text-align: center;">Salary, rent, subscriptions and bills.</p>
+
+        <div id="recurringList" style="max-height: 320px; overflow-y: auto;"></div>
+
+        <button class="btn-action" style="margin-top: 12px;" onclick="openRecurringEditor(null)">
+            <i class="fa-solid fa-plus"></i> Add Recurring
+        </button>
+
+        <div class="modal-actions" style="grid-template-columns: 1fr;">
+            <button class="modal-btn-cancel" onclick="closeRecurringManager()">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- 15. RECURRING EDITOR -->
+<div id="recurringEditorModal" class="modal-overlay hidden" style="z-index: 10002;">
+    <div class="modal-box" style="max-width: 380px; text-align: left; max-height: 88vh; overflow-y: auto;">
+        <div class="modal-icon" style="margin-left: auto; margin-right: auto;"><i class="fa-solid fa-calendar-plus"></i></div>
+        <h3 id="recEditorTitle" style="text-align: center;">New Recurring</h3>
+
+        <div class="modal-input-group">
+            <label>Name</label>
+            <input type="text" id="recName" class="modal-input" maxlength="32" placeholder="e.g. Monthly Salary" style="letter-spacing: normal; text-align: left;">
+        </div>
+
+        <div class="modal-input-group">
+            <label>Type</label>
+            <div class="type-selector">
+                <button type="button" class="type-opt" data-rectype="INCOME" onclick="setRecType('INCOME')">Income</button>
+                <button type="button" class="type-opt" data-rectype="EXPENSE" onclick="setRecType('EXPENSE')">Expense</button>
+            </div>
+        </div>
+
+        <div class="modal-input-group">
+            <label>Category</label>
+            <select id="recCategory" class="modal-input" style="letter-spacing: normal; text-align: left; height: 48px;"></select>
+        </div>
+
+        <div class="modal-input-group">
+            <label>Account</label>
+            <select id="recBank" class="modal-input" style="letter-spacing: normal; text-align: left; height: 48px;"></select>
+        </div>
+
+        <div class="modal-input-group">
+            <label>Currency</label>
+            <select id="recCurrency" class="modal-input" style="letter-spacing: normal; text-align: left; height: 48px;">
+                <option value="MYR">MYR (RM)</option>
+                <option value="USD">USD ($)</option>
+                <option value="SGD">SGD ($)</option>
+                <option value="IDR">IDR (Rp)</option>
+                <option value="THB">THB (฿)</option>
+            </select>
+        </div>
+
+        <div class="modal-input-group">
+            <label>Amount</label>
+            <input type="number" id="recAmount" class="modal-input" step="0.01" placeholder="0.00" style="letter-spacing: normal; text-align: left;">
+        </div>
+
+        <div class="modal-input-group">
+            <label>Repeats</label>
+            <div class="type-selector">
+                <button type="button" class="type-opt" data-recfreq="MONTHLY" onclick="setRecFreq('MONTHLY')">Monthly</button>
+                <button type="button" class="type-opt" data-recfreq="YEARLY" onclick="setRecFreq('YEARLY')">Yearly</button>
+            </div>
+        </div>
+
+        <div class="modal-input-group">
+            <label id="recDayLabel">Day of Month</label>
+            <input type="number" id="recDay" class="modal-input" min="1" max="31" value="1" style="letter-spacing: normal; text-align: left;">
+            <span class="stat-note">If a month is shorter, the last day is used instead.</span>
+        </div>
+
+        <div class="modal-input-group" id="recMonthGroup" style="display:none;">
+            <label>Month</label>
+            <select id="recMonth" class="modal-input" style="letter-spacing: normal; text-align: left; height: 48px;">
+                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+            </select>
+        </div>
+
+        <div class="modal-input-group">
+            <label>Note</label>
+            <input type="text" id="recNote" class="modal-input" placeholder="Optional" style="letter-spacing: normal; text-align: left;">
+        </div>
+
+        <div id="recEditorError" class="modal-error"></div>
+        <div class="modal-actions">
+            <button class="modal-btn-cancel" onclick="closeRecurringEditor()">Cancel</button>
+            <button class="modal-btn-confirm" onclick="saveRecurring()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- 16. DUE RECURRING PROMPT -->
+<div id="recurringDueModal" class="modal-overlay hidden" style="z-index: 10004;">
+    <div class="modal-box" style="max-width: 400px; text-align: left;">
+        <div class="modal-icon" style="margin-left: auto; margin-right: auto; animation: pulseGold 2s infinite;"><i class="fa-solid fa-bell"></i></div>
+        <h3 style="text-align: center;">Scheduled Transactions Due</h3>
+        <p style="text-align: center;" id="recDueDesc">These are ready to be added. Untick anything you want to skip.</p>
+
+        <div id="recurringDueList" style="max-height: 300px; overflow-y: auto;"></div>
+
+        <div class="modal-actions">
+            <button class="modal-btn-cancel" onclick="dismissDueRecurring()">Not Now</button>
+            <button class="modal-btn-confirm" onclick="confirmDueRecurring()">Add Selected</button>
+        </div>
+    </div>
+</div>
+
 <!-- MAIN APP -->
 <div id="appScreen" class="app-container hidden">
     <nav>
@@ -808,6 +986,7 @@
             <button class="btn-action" title="Lock Screen Now" onclick="triggerManualLock()"><i class="fa-solid fa-user-lock" style="color: var(--red);"></i></button>
             <button class="btn-action" title="Master Lock/Unlock All" onclick="masterTogglePrivacy()"><i id="masterLockIcon" class="fa-solid fa-lock"></i></button>
             <button class="btn-action" title="Manage Categories" onclick="openCategoryManager()"><i class="fa-solid fa-tags" style="color: var(--green);"></i></button>
+            <button class="btn-action" title="Recurring Transactions" onclick="openRecurringManager()"><i class="fa-solid fa-repeat" style="color: var(--cyan);"></i></button>
             <button class="btn-action" title="Change PIN" onclick="openChangePinModal()"><i class="fa-solid fa-key" style="color: var(--purple);"></i></button>
             <button class="btn-action" title="Export PDF Report" onclick="window.print()"><i class="fa-solid fa-file-pdf" style="color: var(--cyan);"></i></button>
             <button class="btn-action" title="Backup JSON" onclick="exportBackup()"><i class="fa-solid fa-download" style="color: var(--blue);"></i></button>
@@ -921,11 +1100,13 @@
                 <div class="insights-stats" style="grid-template-columns: repeat(2, 1fr);">
                     <div class="mini-stat-card stat-green">
                         <span>Win Rate</span>
-                        <h4 id="statWinRate" style="color: var(--green);">0.0%</h4>
+                        <h4 id="statWinRate" style="color: var(--green);">--</h4>
+                        <span class="stat-note" id="statWinRateMeta">&nbsp;</span>
                     </div>
                     <div class="mini-stat-card stat-gold">
                         <span>Net Profit</span>
                         <h4 id="statTradeProfit" style="color: var(--gold);">RM 0.00</h4>
+                        <span class="stat-note" id="statTradeProfitMeta">&nbsp;</span>
                     </div>
                 </div>
             </div>
@@ -1166,7 +1347,7 @@
 
     const DEFAULT_CATEGORIES = [
         { id: 'cat_salary',    name: 'Salary',        type: 'INCOME',  color: '#10b981', icon: 'fa-money-check-dollar', locked: false },
-        { id: 'cat_trading',   name: 'Trading',       type: 'INCOME',  color: '#8b5cf6', icon: 'fa-chart-line',         locked: false },
+        { id: 'cat_trading',   name: 'Trading',       type: 'INCOME',  color: '#8b5cf6', icon: 'fa-chart-line',         locked: false, tradeResult: true },
         { id: 'cat_food',      name: 'Food',          type: 'EXPENSE', color: '#f97316', icon: 'fa-utensils',           locked: false },
         { id: 'cat_ent',       name: 'Entertainment', type: 'EXPENSE', color: '#06b6d4', icon: 'fa-film',               locked: false },
         { id: 'cat_tradedep',  name: 'Trade Deposit', type: 'EXPENSE', color: '#f59e0b', icon: 'fa-wallet',             locked: false },
@@ -1517,6 +1698,11 @@
             if (budgetLimits[c.id] === undefined) budgetLimits[c.id] = 0;
         });
 
+        // Existing installs: seed the trading flag so the stat keeps working.
+        categories.forEach(c => {
+            if (c.tradeResult === undefined) c.tradeResult = (c.id === 'cat_trading');
+        });
+
         localStorage.setItem('myr_categories_data', JSON.stringify(categories));
         localStorage.setItem('myr_budget_limits', JSON.stringify(budgetLimits));
     }
@@ -1560,6 +1746,7 @@
     let editorType = 'EXPENSE';
     let editorColor = CATEGORY_PALETTE[0];
     let editorIcon = CATEGORY_ICONS[0];
+    let editorTradeResult = false;
 
     function openCategoryManager() {
         managerType = 'EXPENSE';
@@ -1573,6 +1760,8 @@
         populateFilterCategories();
         renderBudgetConfigUI();
         renderAll();
+        // Prompt after the dashboard is visible, never before unlock.
+        setTimeout(checkDueRecurring, 700);
     }
 
     function setManagerType(type) {
@@ -1602,10 +1791,11 @@
                     <i class="fa-solid ${escapeHtml(c.icon)}"></i>
                 </div>
                 <div class="cat-row-info">
-                    <div class="cat-row-name">${escapeHtml(c.name)}</div>
+                    <div class="cat-row-name">${escapeHtml(c.name)}${c.tradeResult ? ' <i class="fa-solid fa-chart-line" style="font-size:0.62rem; color:var(--purple);" title="Counts as trade outcome"></i>' : ''}</div>
                     <div class="cat-row-meta">${count} record${count === 1 ? '' : 's'}${c.locked ? ' &bull; default' : ''}</div>
                 </div>
                 <div class="cat-row-actions">
+                    <button title="Move records" onclick="openBulkMove('${c.id}')"><i class="fa-solid fa-right-left"></i></button>
                     <button title="Edit" onclick="openCategoryEditor('${c.id}')"><i class="fa-solid fa-pen"></i></button>
                     ${c.locked ? '' : `<button class="del" title="Delete" onclick="confirmDeleteCategory('${c.id}')"><i class="fa-solid fa-trash"></i></button>`}
                 </div>
@@ -1626,6 +1816,7 @@
             editorType = c.type;
             editorColor = c.color;
             editorIcon = c.icon;
+            editorTradeResult = !!c.tradeResult;
             // A locked default category keeps its type - moving 'Others'
             // between income and expense would strand the fallback target.
             document.getElementById('catTypeGroup').style.display = c.locked ? 'none' : 'block';
@@ -1635,11 +1826,13 @@
             editorType = managerType;
             editorColor = CATEGORY_PALETTE[Math.floor(Math.random() * CATEGORY_PALETTE.length)];
             editorIcon = CATEGORY_ICONS[0];
+            editorTradeResult = false;
             document.getElementById('catTypeGroup').style.display = 'block';
         }
 
         buildColorGrid();
         buildIconGrid();
+        applyTradeToggleUI();
         setEditorType(editorType);
         document.getElementById('categoryEditorModal').classList.remove('hidden');
     }
@@ -1684,6 +1877,16 @@
         updateEditorPreview();
     }
 
+    function toggleCatTradeResult() {
+        editorTradeResult = !editorTradeResult;
+        applyTradeToggleUI();
+    }
+
+    function applyTradeToggleUI() {
+        const el = document.getElementById('catTradeToggle');
+        if (el) el.classList.toggle('on', editorTradeResult);
+    }
+
     function updateEditorPreview() {
         const icon = document.getElementById('catEditorIcon');
         if (icon) {
@@ -1710,10 +1913,11 @@
             c.name = name;
             c.color = editorColor;
             c.icon = editorIcon;
+            c.tradeResult = editorTradeResult;
             if (!c.locked) c.type = editorType;
         } else {
             const newId = 'cat_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-            categories.push({ id: newId, name: name, type: editorType, color: editorColor, icon: editorIcon, locked: false });
+            categories.push({ id: newId, name: name, type: editorType, color: editorColor, icon: editorIcon, locked: false, tradeResult: editorTradeResult });
             if (editorType === 'EXPENSE' && budgetLimits[newId] === undefined) {
                 budgetLimits[newId] = 0;
                 localStorage.setItem('myr_budget_limits', JSON.stringify(budgetLimits));
@@ -2274,6 +2478,420 @@
         closeEditTransaction();
         renderAll();
         showToast('Transaction updated.');
+    }
+
+    /* ---------- BULK MOVE / MERGE ---------- */
+
+    let bulkMoveSourceId = null;
+
+    function openBulkMove(sourceId) {
+        const src = getCategory(sourceId);
+        const count = transactions.filter(t => t.categoryId === sourceId).length;
+
+        // Only categories of the same type are valid targets - moving an
+        // expense record into an income category would corrupt the totals.
+        const targets = getCategoriesByType(src.type).filter(c => c.id !== sourceId);
+        if (targets.length === 0) {
+            showToast('Create another category of the same type first.');
+            return;
+        }
+
+        bulkMoveSourceId = sourceId;
+        document.getElementById('bulkMoveDesc').textContent =
+            `"${src.name}" has ${count} record${count === 1 ? '' : 's'}. Choose where they should go.`;
+
+        const sel = document.getElementById('bulkMoveTarget');
+        sel.innerHTML = '';
+        targets.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            sel.appendChild(opt);
+        });
+
+        document.getElementById('bulkMoveError').textContent = '';
+        document.getElementById('bulkMoveModal').classList.remove('hidden');
+    }
+
+    function closeBulkMove() {
+        document.getElementById('bulkMoveModal').classList.add('hidden');
+        bulkMoveSourceId = null;
+    }
+
+    function executeBulkMove(alsoDelete) {
+        const sourceId = bulkMoveSourceId;
+        const targetId = document.getElementById('bulkMoveTarget').value;
+        const errEl = document.getElementById('bulkMoveError');
+
+        if (!sourceId || !targetId || sourceId === targetId) {
+            errEl.textContent = 'Please choose a different destination category.';
+            return;
+        }
+
+        const src = getCategory(sourceId);
+        const dest = getCategory(targetId);
+
+        if (alsoDelete && src.locked) {
+            errEl.textContent = 'Default categories cannot be deleted, but records can still be moved.';
+            return;
+        }
+
+        const affected = transactions.filter(t => t.categoryId === sourceId);
+        const doMove = () => {
+            affected.forEach(t => { t.categoryId = targetId; });
+
+            if (alsoDelete) {
+                // Roll the source budget into the destination so a merge does
+                // not quietly lower the combined monthly limit.
+                const srcLimit = budgetLimits[sourceId] || 0;
+                if (srcLimit > 0 && src.type === 'EXPENSE') {
+                    budgetLimits[targetId] = (budgetLimits[targetId] || 0) + srcLimit;
+                }
+                delete budgetLimits[sourceId];
+                categories = categories.filter(c => c.id !== sourceId);
+                localStorage.setItem('myr_budget_limits', JSON.stringify(budgetLimits));
+            }
+
+            saveCategories();
+            closeBulkMove();
+            renderCategoryManageList();
+            renderBudgetConfigUI();
+            renderAll();
+            showToast(alsoDelete
+                ? `Merged "${src.name}" into "${dest.name}".`
+                : `Moved ${affected.length} record${affected.length === 1 ? '' : 's'} to "${dest.name}".`);
+        };
+
+        if (alsoDelete) {
+            showConfirmModal('Merge Categories',
+                `Move ${affected.length} record${affected.length === 1 ? '' : 's'} into "${dest.name}" and delete "${src.name}"?`,
+                doMove);
+        } else {
+            doMove();
+        }
+    }
+
+    /* ============================================================
+       RECURRING TRANSACTIONS
+       Templates that propose records when they fall due. Nothing is
+       ever written without the user confirming it first.
+       ============================================================ */
+
+    let recurring = JSON.parse(localStorage.getItem('myr_recurring_data')) || [];
+    let pendingDue = [];
+    let editingRecId = null;
+    let recType = 'EXPENSE';
+    let recFreq = 'MONTHLY';
+
+    function saveRecurring2() {
+        localStorage.setItem('myr_recurring_data', JSON.stringify(recurring));
+    }
+
+    // Clamp to the last day when the target day does not exist, so a rule
+    // set to the 31st still fires in February instead of silently skipping.
+    function buildDueDate(year, monthIndex, day) {
+        const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+        return `${year}-${pad2(monthIndex + 1)}-${pad2(Math.min(day, lastDay))}`;
+    }
+
+    // Every occurrence from the last posted date up to today. Catching up
+    // matters: if the app is not opened for three months, all three are
+    // offered rather than only the newest.
+    function getDueOccurrences(rule) {
+        const out = [];
+        const today = toLocalDateStr(new Date());
+        const now = new Date();
+
+        if (rule.frequency === 'YEARLY') {
+            const startYear = rule.lastPosted ? parseInt(rule.lastPosted.slice(0, 4), 10) : now.getFullYear() - 1;
+            for (let y = startYear; y <= now.getFullYear(); y++) {
+                const d = buildDueDate(y, (rule.month || 1) - 1, rule.day || 1);
+                if (d <= today && (!rule.lastPosted || d > rule.lastPosted)) out.push(d);
+            }
+            return out;
+        }
+
+        let cursor;
+        if (rule.lastPosted) {
+            const lp = new Date(rule.lastPosted);
+            cursor = new Date(lp.getFullYear(), lp.getMonth() + 1, 1);
+        } else {
+            cursor = new Date(now.getFullYear(), now.getMonth(), 1);
+        }
+
+        let guard = 0;
+        while (guard++ < 60) {
+            if (cursor.getFullYear() > now.getFullYear() ||
+               (cursor.getFullYear() === now.getFullYear() && cursor.getMonth() > now.getMonth())) break;
+            const d = buildDueDate(cursor.getFullYear(), cursor.getMonth(), rule.day || 1);
+            if (d <= today && (!rule.lastPosted || d > rule.lastPosted)) out.push(d);
+            cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+        }
+        return out;
+    }
+
+    function checkDueRecurring() {
+        pendingDue = [];
+        recurring.filter(r => r.active !== false).forEach(rule => {
+            getDueOccurrences(rule).forEach(date => {
+                pendingDue.push({ ruleId: rule.id, date: date, selected: true });
+            });
+        });
+
+        if (pendingDue.length === 0) return;
+        renderDueList();
+        document.getElementById('recDueDesc').textContent =
+            `${pendingDue.length} scheduled transaction${pendingDue.length === 1 ? '' : 's'} ready to add. Untick anything you want to skip.`;
+        document.getElementById('recurringDueModal').classList.remove('hidden');
+    }
+
+    function renderDueList() {
+        const list = document.getElementById('recurringDueList');
+        list.innerHTML = '';
+        pendingDue.forEach((d, i) => {
+            const rule = recurring.find(r => r.id === d.ruleId);
+            if (!rule) return;
+            const cat = getCategory(rule.categoryId);
+            const isIn = rule.type === 'INCOME';
+            const row = document.createElement('div');
+            row.className = 'rec-row' + (d.selected ? ' due' : '');
+            row.innerHTML = `
+                <button class="rec-check ${d.selected ? 'on' : ''}" onclick="toggleDue(${i})"><i class="fa-solid fa-check"></i></button>
+                <div class="rec-info">
+                    <div class="rec-name">${escapeHtml(rule.name)}</div>
+                    <div class="rec-meta">${escapeHtml(d.date)} &bull; ${escapeHtml(cat.name)} &bull; ${escapeHtml(rule.bank)}</div>
+                </div>
+                <div class="rec-amt" style="color:${isIn ? 'var(--green)' : 'var(--red)'};">${isIn ? '+' : '-'}${formatMoney(toMYR(rule.amount, rule.currency))}</div>
+            `;
+            list.appendChild(row);
+        });
+    }
+
+    function toggleDue(i) {
+        pendingDue[i].selected = !pendingDue[i].selected;
+        renderDueList();
+    }
+
+    function confirmDueRecurring() {
+        let added = 0;
+        pendingDue.forEach(d => {
+            const rule = recurring.find(r => r.id === d.ruleId);
+            if (!rule) return;
+
+            if (d.selected) {
+                const txn = {
+                    id: 'txn_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+                    date: d.date,
+                    type: rule.type,
+                    categoryId: rule.categoryId,
+                    bank: rule.bank,
+                    amount: toMYR(rule.amount, rule.currency),
+                    originalCurrency: rule.currency,
+                    originalAmount: rule.amount,
+                    note: rule.note || rule.name,
+                    recurringId: rule.id
+                };
+                applyTxnEffect(txn, false);
+                transactions.unshift(txn);
+                added++;
+            }
+            // Advance the marker either way, so a skipped month is not
+            // offered again on every single app launch.
+            if (!rule.lastPosted || d.date > rule.lastPosted) rule.lastPosted = d.date;
+        });
+
+        saveRecurring2();
+        pendingDue = [];
+        document.getElementById('recurringDueModal').classList.add('hidden');
+        renderAll();
+        showToast(added > 0 ? `${added} transaction${added === 1 ? '' : 's'} added.` : 'All scheduled items skipped.');
+    }
+
+    function dismissDueRecurring() {
+        // Leave lastPosted untouched - they stay due and will be offered again.
+        pendingDue = [];
+        document.getElementById('recurringDueModal').classList.add('hidden');
+    }
+
+    /* ---------- RECURRING MANAGER UI ---------- */
+
+    function openRecurringManager() {
+        renderRecurringList();
+        document.getElementById('recurringModal').classList.remove('hidden');
+    }
+
+    function closeRecurringManager() {
+        document.getElementById('recurringModal').classList.add('hidden');
+    }
+
+    function renderRecurringList() {
+        const list = document.getElementById('recurringList');
+        list.innerHTML = '';
+
+        if (recurring.length === 0) {
+            list.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:0.8rem; padding:16px;">Nothing scheduled yet.</div>`;
+            return;
+        }
+
+        recurring.forEach(r => {
+            const cat = getCategory(r.categoryId);
+            const isIn = r.type === 'INCOME';
+            const inactive = r.active === false;
+            const freqTxt = r.frequency === 'YEARLY'
+                ? `Yearly &bull; ${['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][r.month || 1]} ${r.day}`
+                : `Monthly &bull; day ${r.day}`;
+
+            const row = document.createElement('div');
+            row.className = 'rec-row';
+            row.style.opacity = inactive ? '0.5' : '1';
+            row.innerHTML = `
+                <div class="cat-row-icon" style="background:${hexToRgba(cat.color, 0.15)}; color:${cat.color}; border:1px solid ${hexToRgba(cat.color, 0.3)};">
+                    <i class="fa-solid ${escapeHtml(cat.icon)}"></i>
+                </div>
+                <div class="rec-info">
+                    <div class="rec-name">${escapeHtml(r.name)}${inactive ? ' (paused)' : ''}</div>
+                    <div class="rec-meta">${freqTxt} &bull; ${escapeHtml(r.bank)}</div>
+                </div>
+                <div class="rec-amt" style="color:${isIn ? 'var(--green)' : 'var(--red)'};">${isIn ? '+' : '-'}${formatMoney(toMYR(r.amount, r.currency))}</div>
+                <div class="rec-actions">
+                    <button title="${inactive ? 'Resume' : 'Pause'}" onclick="toggleRecurringActive('${r.id}')"><i class="fa-solid ${inactive ? 'fa-play' : 'fa-pause'}"></i></button>
+                    <button title="Edit" onclick="openRecurringEditor('${r.id}')"><i class="fa-solid fa-pen"></i></button>
+                    <button class="del" title="Delete" onclick="deleteRecurring('${r.id}')"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `;
+            list.appendChild(row);
+        });
+    }
+
+    function toggleRecurringActive(id) {
+        const r = recurring.find(x => x.id === id);
+        if (!r) return;
+        r.active = r.active === false;
+        saveRecurring2();
+        renderRecurringList();
+    }
+
+    function deleteRecurring(id) {
+        const r = recurring.find(x => x.id === id);
+        if (!r) return;
+        showConfirmModal('Delete Recurring',
+            `Stop scheduling "${r.name}"? Transactions already added will stay.`, () => {
+            recurring = recurring.filter(x => x.id !== id);
+            saveRecurring2();
+            renderRecurringList();
+            showToast('Recurring rule deleted.');
+        });
+    }
+
+    function setRecType(type) {
+        recType = type;
+        document.querySelectorAll('[data-rectype]').forEach(b => b.classList.toggle('active', b.dataset.rectype === type));
+        const sel = document.getElementById('recCategory');
+        const prev = sel.value;
+        sel.innerHTML = '';
+        getCategoriesByType(type).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id; opt.textContent = c.name;
+            sel.appendChild(opt);
+        });
+        if (Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+    }
+
+    function setRecFreq(freq) {
+        recFreq = freq;
+        document.querySelectorAll('[data-recfreq]').forEach(b => b.classList.toggle('active', b.dataset.recfreq === freq));
+        document.getElementById('recMonthGroup').style.display = freq === 'YEARLY' ? 'block' : 'none';
+    }
+
+    function openRecurringEditor(id) {
+        editingRecId = id;
+        document.getElementById('recEditorError').textContent = '';
+
+        const bankSel = document.getElementById('recBank');
+        bankSel.innerHTML = '';
+        banks.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.name; opt.textContent = b.name;
+            bankSel.appendChild(opt);
+        });
+
+        if (id) {
+            const r = recurring.find(x => x.id === id);
+            if (!r) return;
+            document.getElementById('recEditorTitle').textContent = 'Edit Recurring';
+            document.getElementById('recName').value = r.name;
+            document.getElementById('recAmount').value = r.amount;
+            document.getElementById('recCurrency').value = r.currency;
+            document.getElementById('recDay').value = r.day;
+            document.getElementById('recNote').value = r.note || '';
+            document.getElementById('recMonth').value = r.month || 1;
+            setRecType(r.type);
+            setRecFreq(r.frequency || 'MONTHLY');
+            document.getElementById('recCategory').value = r.categoryId;
+            if (banks.some(b => b.name === r.bank)) bankSel.value = r.bank;
+        } else {
+            document.getElementById('recEditorTitle').textContent = 'New Recurring';
+            document.getElementById('recName').value = '';
+            document.getElementById('recAmount').value = '';
+            document.getElementById('recCurrency').value = currentCurrency;
+            document.getElementById('recDay').value = 1;
+            document.getElementById('recNote').value = '';
+            document.getElementById('recMonth').value = 1;
+            setRecType('EXPENSE');
+            setRecFreq('MONTHLY');
+        }
+
+        document.getElementById('recurringEditorModal').classList.remove('hidden');
+    }
+
+    function closeRecurringEditor() {
+        document.getElementById('recurringEditorModal').classList.add('hidden');
+        editingRecId = null;
+    }
+
+    function saveRecurring() {
+        const errEl = document.getElementById('recEditorError');
+        const name = document.getElementById('recName').value.trim();
+        const amount = parseFloat(document.getElementById('recAmount').value);
+        const day = parseInt(document.getElementById('recDay').value, 10);
+        const bank = document.getElementById('recBank').value;
+        const categoryId = document.getElementById('recCategory').value;
+
+        if (!name) { errEl.textContent = 'Please enter a name.'; return; }
+        if (isNaN(amount) || amount <= 0) { errEl.textContent = 'Please enter a valid amount.'; return; }
+        if (isNaN(day) || day < 1 || day > 31) { errEl.textContent = 'Day must be between 1 and 31.'; return; }
+        if (!bank) { errEl.textContent = 'Please add an account first.'; return; }
+        if (!categoryId) { errEl.textContent = 'Please choose a category.'; return; }
+
+        const payload = {
+            name: name,
+            type: recType,
+            categoryId: categoryId,
+            bank: bank,
+            currency: document.getElementById('recCurrency').value,
+            amount: amount,
+            frequency: recFreq,
+            day: day,
+            month: recFreq === 'YEARLY' ? parseInt(document.getElementById('recMonth').value, 10) : null,
+            note: document.getElementById('recNote').value.trim(),
+            active: true
+        };
+
+        if (editingRecId) {
+            const r = recurring.find(x => x.id === editingRecId);
+            Object.assign(r, payload);
+        } else {
+            // Start the clock from today so creating a rule does not
+            // immediately back-fill months that were never intended.
+            payload.id = 'rec_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            payload.lastPosted = toLocalDateStr(new Date());
+            recurring.push(payload);
+        }
+
+        saveRecurring2();
+        closeRecurringEditor();
+        renderRecurringList();
+        showToast(editingRecId ? 'Recurring rule updated.' : 'Recurring rule added.');
     }
 
     function formatMoney(amount) {
@@ -3032,18 +3650,55 @@
     }
 
     function updateTradingStats() {
-        const tradeTrans = getFilteredTransactions(currentPeriod).filter(t => t.categoryId === 'cat_trading');
-        let wins = 0;
-        let netTradeProfit = 0;
+        // A trade OUTCOME is any record in a category the user has flagged as
+        // counting toward trading performance. Wins are income records, losses
+        // are expense records. Deposits live in their own unflagged category,
+        // so they no longer inflate the win rate the way they used to.
+        const tradeCatIds = categories.filter(c => c.tradeResult).map(c => c.id);
+        const rows = getFilteredTransactions(currentPeriod).filter(t => tradeCatIds.includes(t.categoryId));
 
-        tradeTrans.forEach(t => {
-            netTradeProfit += (t.type === 'INCOME' ? t.amount : -t.amount);
-            if (t.type === 'INCOME') wins++;
-        });
+        const winRows = rows.filter(t => t.type === 'INCOME');
+        const lossRows = rows.filter(t => t.type === 'EXPENSE');
+        const wins = winRows.length;
+        const losses = lossRows.length;
+        const closed = wins + losses;
 
-        const winRate = tradeTrans.length > 0 ? (wins / tradeTrans.length) * 100 : 0;
-        document.getElementById('statWinRate').textContent = `${winRate.toFixed(1)}%`;
-        document.getElementById('statTradeProfit').textContent = hiddenState.history ? "******" : formatMoney(netTradeProfit);
+        const grossWin = winRows.reduce((s, t) => s + t.amount, 0);
+        const grossLoss = lossRows.reduce((s, t) => s + t.amount, 0);
+        const netTradeProfit = grossWin - grossLoss;
+
+        const rateEl = document.getElementById('statWinRate');
+        const metaEl = document.getElementById('statWinRateMeta');
+        const profitEl = document.getElementById('statTradeProfit');
+        const profitMetaEl = document.getElementById('statTradeProfitMeta');
+
+        if (closed === 0) {
+            rateEl.textContent = '--';
+            if (metaEl) {
+                metaEl.textContent = tradeCatIds.length === 0
+                    ? 'Flag a category in Categories'
+                    : 'No closed trades this period';
+            }
+        } else {
+            const winRate = (wins / closed) * 100;
+            rateEl.textContent = `${winRate.toFixed(1)}%`;
+            if (metaEl) {
+                // Without a loss category the rate is meaningless, so say so
+                // rather than quietly reporting a flawless 100%.
+                metaEl.textContent = losses === 0
+                    ? `${wins}W &bull; no losses logged`
+                    : `${wins}W / ${losses}L`;
+                metaEl.innerHTML = metaEl.textContent;
+            }
+        }
+
+        profitEl.textContent = hiddenState.history ? "******" : formatMoney(netTradeProfit);
+        profitEl.style.color = netTradeProfit < 0 ? 'var(--red)' : 'var(--gold)';
+        if (profitMetaEl) {
+            profitMetaEl.textContent = hiddenState.history || closed === 0
+                ? ' '
+                : `+${formatMoney(grossWin)} / -${formatMoney(grossLoss)}`;
+        }
     }
 
     function updateMetricsAndChart() {
@@ -3219,6 +3874,7 @@
         localStorage.setItem('myr_banks_data', JSON.stringify(banks));
         localStorage.setItem('myr_categories_data', JSON.stringify(categories));
         localStorage.setItem('myr_budget_limits', JSON.stringify(budgetLimits));
+        localStorage.setItem('myr_recurring_data', JSON.stringify(recurring));
         localStorage.setItem('myr_transactions_data', JSON.stringify(transactions));
         localStorage.setItem('myr_journal_data', JSON.stringify(journalNotes));
         localStorage.setItem('myr_hidden_state', JSON.stringify(hiddenState));
@@ -3226,7 +3882,7 @@
     }
 
     function exportBackup() {
-        const backup = { userProfile, banks, transactions, journalNotes, hiddenState, currentCurrency, budgetLimits, categories, currentPin, currentTheme, currentPeriod };
+        const backup = { userProfile, banks, transactions, journalNotes, hiddenState, currentCurrency, budgetLimits, categories, recurring, currentPin, currentTheme, currentPeriod };
         const dataStr = "data:text/json;charset=text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
         const anchor = document.createElement('a');
         anchor.href = dataStr;
@@ -3249,6 +3905,7 @@
                     if (data.journalNotes) journalNotes = data.journalNotes;
                     if (data.hiddenState) hiddenState = data.hiddenState;
                     if (data.budgetLimits) budgetLimits = data.budgetLimits;
+                    if (data.recurring) { recurring = data.recurring; saveRecurring2(); }
                     // Older backups have no categories array - migrateCategories()
                     // below rebuilds the defaults and remaps the legacy names.
                     categories = (data.categories && data.categories.length) ? data.categories : null;
