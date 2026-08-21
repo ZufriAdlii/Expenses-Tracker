@@ -278,10 +278,45 @@
 
         /* TRANSACTION FORM */
         .form-card form { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
         .form-group label { font-size: 0.72rem; color: var(--accent-primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        input, select { background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text-main); padding: 12px 14px; border-radius: 10px; font-size: 0.9rem; outline: none; width: 100%; }
+        input, select { background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text-main); padding: 12px 14px; border-radius: 10px; font-size: 0.9rem; outline: none; width: 100%; min-width: 0; max-width: 100%; }
         input:focus, select:focus { border-color: var(--accent-primary); box-shadow: 0 0 12px var(--accent-glow); }
+
+        /* iOS SAFARI DATE INPUT FIX
+           Date inputs carry an intrinsic width that ignores width:100% and
+           default to centered text, so they burst out of their container
+           while every other field behaves. Strip the native appearance,
+           force them to shrink, and left-align the value like the selects. */
+        input[type="date"] {
+            -webkit-appearance: none;
+            appearance: none;
+            display: block;
+            text-align: left;
+            line-height: 1.2;
+            font-family: inherit;
+        }
+        /* Only the main form's date field needs to match the select heights;
+           the small History filter dates keep their own compact sizing. */
+        .form-group input[type="date"] { min-height: 45px; }
+        #customDateRangeContainer input[type="date"] { flex: 1 1 0; }
+        input[type="date"]::-webkit-date-and-time-value {
+            text-align: left;
+            margin: 0;
+        }
+        input[type="date"]::-webkit-datetime-edit {
+            padding: 0;
+            text-align: left;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(72%) sepia(45%) saturate(600%) hue-rotate(2deg);
+            cursor: pointer;
+            margin-left: auto;
+            opacity: 0.9;
+        }
+        body.light-mode input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(55%) sepia(60%) saturate(700%) hue-rotate(2deg);
+        }
         
         select option { background-color: var(--input-bg); color: var(--text-main); padding: 12px; font-weight: 700; }
 
