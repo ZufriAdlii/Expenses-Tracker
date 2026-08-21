@@ -229,6 +229,16 @@
         .metric-card h2 { font-size: 1.1rem; font-weight: 800; word-break: break-all; display: flex; align-items: center; justify-content: space-between; }
         .btn-toggle-eye { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 2px 5px; }
         .btn-toggle-eye:hover { color: var(--accent-primary); }
+        .metric-card .metric-delta { font-size: 0.62rem; font-weight: 700; color: var(--text-muted); text-transform: none; letter-spacing: 0; display: block; margin-top: 5px; }
+
+        /* PERIOD SELECTOR (DAILY / MONTHLY / YEARLY / ALL TIME) */
+        .period-wrap { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 10px; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .period-selector { display: flex; gap: 6px; background: rgba(150,150,150,0.06); padding: 5px; border-radius: 10px; }
+        .period-btn { flex: 1; background: transparent; border: none; color: var(--text-muted); font-size: 0.72rem; font-weight: 700; padding: 9px 6px; border-radius: 8px; cursor: pointer; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.4px; }
+        .period-btn:hover { color: var(--accent-primary); background: rgba(212, 175, 55, 0.06); }
+        .period-btn.active { background: var(--accent-gradient); color: #000; box-shadow: 0 4px 12px var(--accent-glow); }
+        .period-context { display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; margin-top: 9px; letter-spacing: 0.3px; }
+        .period-context i { color: var(--accent-primary); font-size: 0.72rem; }
 
         /* ANALYTICS GRID */
         .analytics-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 16px; }
@@ -587,10 +597,25 @@
 
     <!-- TAB 1: DASHBOARD -->
     <div id="tabDashboard" class="tab-content">
+        <!-- PERIOD SELECTOR -->
+        <div class="period-wrap">
+            <div class="period-selector">
+                <button class="period-btn" data-period="DAILY" onclick="setPeriod('DAILY')">Daily</button>
+                <button class="period-btn" data-period="MONTHLY" onclick="setPeriod('MONTHLY')">Monthly</button>
+                <button class="period-btn" data-period="YEARLY" onclick="setPeriod('YEARLY')">Yearly</button>
+                <button class="period-btn active" data-period="ALL" onclick="setPeriod('ALL')">All Time</button>
+            </div>
+            <div class="period-context">
+                <i class="fa-solid fa-calendar-day"></i>
+                <span id="periodContextLabel">Showing all recorded data</span>
+            </div>
+        </div>
+
         <div class="metrics-grid">
             <div class="metric-card networth-card">
                 <div class="card-head"><span id="lblNetworth" style="color: var(--gold);"><i class="fa-solid fa-vault"></i> Net Worth</span> <button class="btn-toggle-eye" onclick="toggleMetric('networth')"><i id="eye-networth" class="fa-solid fa-eye-slash"></i></button></div>
                 <h2 id="dispNetWorth">RM 0.00</h2>
+                <span class="metric-delta" id="dispNetWorthDelta">&nbsp;</span>
             </div>
             <div class="metric-card income-card">
                 <div class="card-head"><span id="lblIncome" style="color: var(--green);"><i class="fa-solid fa-arrow-trend-up"></i> Income</span> <button class="btn-toggle-eye" onclick="toggleMetric('income')"><i id="eye-income" class="fa-solid fa-eye-slash"></i></button></div>
@@ -867,6 +892,7 @@
 
     let currentPin = localStorage.getItem('myr_secure_pin') || '1212';
     let currentTheme = localStorage.getItem('myr_app_theme') || 'dark';
+    let currentPeriod = localStorage.getItem('myr_metric_period') || 'ALL';
 
     let userProfile = JSON.parse(localStorage.getItem('myr_user_profile')) || {
         username: 'zufriadli',
@@ -913,6 +939,7 @@
         document.getElementById('transCurrency').value = currentCurrency;
         applyThemeUI();
         applyProfileToUI();
+        applyPeriodUI();
         startLoading();
         resetIdleTimer();
 
@@ -1060,6 +1087,100 @@
         document.getElementById('loadPercent').textContent = '0';
         document.getElementById('loadingStatusText').textContent = "REFRESHING VAULT...";
         startLoading(true);
+    }
+
+    /* ============================================================
+       PERIOD ENGINE - DAILY / MONTHLY / YEARLY / ALL TIME
+       ============================================================ */
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    function toLocalDateStr(dateObj) {
+        return `${dateObj.getFullYear()}-${pad2(dateObj.getMonth() + 1)}-${pad2(dateObj.getDate())}`;
+    }
+
+    // Returns { start, end, label, shortLabel, months }
+    // start/end are 'YYYY-MM-DD' strings so we can compare them directly
+    // without timezone problems. months = length of period in months,
+    // used for the Runway calculation.
+    function getPeriodRange(period) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+
+        if (period === 'DAILY') {
+            const d = toLocalDateStr(now);
+            return {
+                start: d,
+                end: d,
+                label: `Today &bull; ${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`,
+                shortLabel: 'Today',
+                months: 1 / 30.44
+            };
+        }
+
+        if (period === 'MONTHLY') {
+            const lastDay = new Date(y, m + 1, 0).getDate();
+            return {
+                start: `${y}-${pad2(m + 1)}-01`,
+                end: `${y}-${pad2(m + 1)}-${pad2(lastDay)}`,
+                label: `This Month &bull; ${now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`,
+                shortLabel: 'This Month',
+                months: 1
+            };
+        }
+
+        if (period === 'YEARLY') {
+            return {
+                start: `${y}-01-01`,
+                end: `${y}-12-31`,
+                label: `This Year &bull; ${y}`,
+                shortLabel: 'This Year',
+                months: 12
+            };
+        }
+
+        // ALL TIME - span from the earliest transaction until today,
+        // so Runway still uses a sane monthly average.
+        let months = 1;
+        if (transactions.length > 0) {
+            const dates = transactions.map(t => t.date).filter(Boolean).sort();
+            if (dates.length > 0) {
+                const first = new Date(dates[0]);
+                if (!isNaN(first)) {
+                    months = (now.getFullYear() - first.getFullYear()) * 12
+                           + (now.getMonth() - first.getMonth()) + 1;
+                    if (months < 1) months = 1;
+                }
+            }
+        }
+        return {
+            start: '0000-01-01',
+            end: '9999-12-31',
+            label: 'Showing all recorded data',
+            shortLabel: 'All Time',
+            months: months
+        };
+    }
+
+    function getFilteredTransactions(period) {
+        const range = getPeriodRange(period || currentPeriod);
+        return transactions.filter(t => t.date && t.date >= range.start && t.date <= range.end);
+    }
+
+    function setPeriod(period) {
+        currentPeriod = period;
+        localStorage.setItem('myr_metric_period', period);
+        applyPeriodUI();
+        renderAll();
+    }
+
+    function applyPeriodUI() {
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.period === currentPeriod);
+        });
+        const ctx = document.getElementById('periodContextLabel');
+        if (ctx) ctx.innerHTML = getPeriodRange(currentPeriod).label;
     }
 
     function formatMoney(amount) {
@@ -1778,27 +1899,43 @@
         let totalNetWorth = 0;
         banks.forEach(b => totalNetWorth += b.balance);
 
-        let totalAnnualSavings = 0;
+        // Annualize the real savings rate: total cash flow divided by how many
+        // months of history exist, multiplied by 12. Using the raw all-time
+        // total as an "annual" figure was wrong for any history != 12 months.
+        let lifetimeCashflow = 0;
         transactions.forEach(t => {
-            if(t.type === 'INCOME') totalAnnualSavings += t.amount;
-            else totalAnnualSavings -= t.amount;
+            if(t.type === 'INCOME') lifetimeCashflow += t.amount;
+            else lifetimeCashflow -= t.amount;
         });
-        if(totalAnnualSavings < 0) totalAnnualSavings = 10000;
+
+        const monthsOfHistory = getPeriodRange('ALL').months;
+        const annualSavings = (lifetimeCashflow / monthsOfHistory) * 12;
+
+        const yearsEl = document.getElementById('fireYearsNeeded');
+
+        if (totalNetWorth >= fireTarget) {
+            yearsEl.textContent = 'Achieved';
+            return;
+        }
+        if (annualSavings <= 0) {
+            yearsEl.textContent = 'Not on track';
+            return;
+        }
 
         let currentVal = totalNetWorth;
         let years = 0;
         const r = returnRate / 100;
 
         while(currentVal < fireTarget && years < 60) {
-            currentVal = (currentVal + totalAnnualSavings) * (1 + r);
+            currentVal = (currentVal + annualSavings) * (1 + r);
             years++;
         }
 
-        document.getElementById('fireYearsNeeded').textContent = `${years} Years`;
+        yearsEl.textContent = years >= 60 ? '60+ Years' : `${years} Years`;
     }
 
     function updateTradingStats() {
-        const tradeTrans = transactions.filter(t => t.category === 'TRADING');
+        const tradeTrans = getFilteredTransactions(currentPeriod).filter(t => t.category === 'TRADING');
         let wins = 0;
         let netTradeProfit = 0;
 
@@ -1820,13 +1957,19 @@
         updateEyeIcon('chart');
         updateEyeIcon('milestone');
 
+        const range = getPeriodRange(currentPeriod);
+        const periodTrans = getFilteredTransactions(currentPeriod);
+
+        // Net worth is always a snapshot of RIGHT NOW - a balance is not
+        // something you can sum over a period.
         let totalNetWorth = 0;
         banks.forEach(b => totalNetWorth += b.balance);
 
+        // Income / Expense / Cash Flow are period-scoped.
         let totalIncome = 0;
         let totalExpense = 0;
 
-        transactions.forEach(t => {
+        periodTrans.forEach(t => {
             if (t.type === 'INCOME') totalIncome += t.amount;
             else totalExpense += t.amount;
         });
@@ -1837,6 +1980,30 @@
         document.getElementById('dispTotalIncome').innerHTML = hiddenState.income ? "******" : formatMoney(totalIncome);
         document.getElementById('dispTotalExpense').innerHTML = hiddenState.expense ? "******" : formatMoney(totalExpense);
         document.getElementById('dispCashflow').innerHTML = hiddenState.cashflow ? "******" : formatMoney(cashflow);
+
+        // Show how much the net worth moved during the selected period.
+        const deltaEl = document.getElementById('dispNetWorthDelta');
+        if (deltaEl) {
+            if (hiddenState.networth) {
+                deltaEl.innerHTML = "&nbsp;";
+            } else if (currentPeriod === 'ALL') {
+                deltaEl.textContent = "Current total balance";
+                deltaEl.style.color = "var(--text-muted)";
+            } else {
+                const sign = cashflow > 0 ? '+' : (cashflow < 0 ? '-' : '');
+                deltaEl.textContent = `${sign}${formatMoney(Math.abs(cashflow))} ${range.shortLabel.toLowerCase()}`;
+                deltaEl.style.color = cashflow > 0 ? 'var(--green)' : (cashflow < 0 ? 'var(--red)' : 'var(--text-muted)');
+            }
+        }
+
+        // Tag the labels so the numbers are never ambiguous.
+        const periodTag = currentPeriod === 'ALL' ? '' : ` (${range.shortLabel})`;
+        const lblIncomeEl = document.getElementById('lblIncome');
+        const lblExpenseEl = document.getElementById('lblExpense');
+        const lblCashflowEl = document.getElementById('lblCashflow');
+        if (lblIncomeEl) lblIncomeEl.innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> Income${periodTag}`;
+        if (lblExpenseEl) lblExpenseEl.innerHTML = `<i class="fa-solid fa-arrow-trend-down"></i> Expenses${periodTag}`;
+        if (lblCashflowEl) lblCashflowEl.innerHTML = `<i class="fa-solid fa-scale-balanced"></i> Cash Flow${periodTag}`;
 
         let targetTier = 10000;
         let tierName = "Silver Vault Tier";
@@ -1855,8 +2022,15 @@
         let savingsRate = totalIncome > 0 ? Math.max(0, ((totalIncome - totalExpense) / totalIncome) * 100) : 0;
         document.getElementById('statSavingsRate').textContent = `${savingsRate.toFixed(1)}%`;
 
-        let runwayMonths = totalExpense > 0 ? (totalNetWorth / totalExpense) : (totalNetWorth > 0 ? 12 : 0);
-        document.getElementById('statRunway').textContent = `${runwayMonths.toFixed(1)} Mos`;
+        // Runway = net worth divided by the AVERAGE MONTHLY burn rate of the
+        // selected period, not by the raw period total. Without this the
+        // number would mean something different for every period.
+        const monthlyBurn = range.months > 0 ? (totalExpense / range.months) : 0;
+        let runwayMonths = monthlyBurn > 0 ? (totalNetWorth / monthlyBurn) : 0;
+        if (runwayMonths > 999) runwayMonths = 999;
+        document.getElementById('statRunway').textContent = monthlyBurn > 0
+            ? `${runwayMonths.toFixed(1)} Mos`
+            : '--';
 
         const overlayEl = document.getElementById('chartLockedOverlay');
         if (hiddenState.chart) {
@@ -1867,19 +2041,32 @@
             overlayEl.classList.add('hidden');
         }
 
+        // Work out the net worth at the START of the period by rewinding
+        // today's balance back through every transaction dated on or after
+        // the period start. Starting the line at the CURRENT net worth and
+        // then re-applying the same transactions would double-count them.
+        let netWorthAtStart = totalNetWorth;
+        transactions.forEach(t => {
+            if (t.date && t.date >= range.start) {
+                if (t.type === 'INCOME') netWorthAtStart -= t.amount;
+                else netWorthAtStart += t.amount;
+            }
+        });
+
+        const rate = currencyRates[currentCurrency] || 1;
         let chartLabels = [];
         let chartData = [];
-        let runningVal = totalNetWorth;
-        let sortedTrans = [...transactions].sort((a,b) => new Date(a.date) - new Date(b.date));
-        
-        chartLabels.push('Initial');
-        chartData.push(totalNetWorth * (currencyRates[currentCurrency] || 1));
+        let runningVal = netWorthAtStart;
+        let sortedTrans = [...periodTrans].sort((a, b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : 0));
+
+        chartLabels.push(currentPeriod === 'ALL' ? 'Start' : range.start);
+        chartData.push(netWorthAtStart * rate);
 
         sortedTrans.forEach(t => {
             chartLabels.push(t.date);
             if (t.type === 'INCOME') runningVal += t.amount;
             else runningVal -= t.amount;
-            chartData.push(runningVal * (currencyRates[currentCurrency] || 1));
+            chartData.push(runningVal * rate);
         });
 
         const ctx = document.getElementById('financeChart').getContext('2d');
