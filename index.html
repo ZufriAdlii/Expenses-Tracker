@@ -408,6 +408,8 @@
         .icon-opt { aspect-ratio: 1; background: rgba(150,150,150,0.07); border: 1px solid rgba(150,150,150,0.12); border-radius: 8px; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
         .icon-opt.active { background: rgba(212,175,55,0.16); border-color: var(--accent-primary); color: var(--accent-primary); }
 
+        .btn-edit { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; font-size: 0.85rem; }
+        .btn-edit:hover { color: var(--accent-primary); }
         .btn-delete { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; font-size: 0.9rem; }
         .btn-delete:hover { color: var(--red); }
 
@@ -722,6 +724,69 @@
             <button title="Close" onclick="closeDrillDown()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="drill-body" id="drillBody"></div>
+    </div>
+</div>
+
+<!-- 12. EDIT TRANSACTION MODAL -->
+<div id="editTransModal" class="modal-overlay hidden" style="z-index: 10003;">
+    <div class="modal-box" style="max-width: 380px; text-align: left; max-height: 88vh; overflow-y: auto;">
+        <div class="modal-icon" style="margin-left: auto; margin-right: auto;"><i class="fa-solid fa-pen-to-square"></i></div>
+        <h3 style="text-align: center;">Edit Transaction</h3>
+
+        <div id="editTransLockNotice" class="hidden" style="background: rgba(245,158,11,0.1); border: 1px solid var(--gold); color: var(--gold); font-size: 0.72rem; padding: 10px 12px; border-radius: 10px; margin-bottom: 14px; line-height: 1.45;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            This is one half of a transfer pair. Date, category and note can be changed, but the amount and account are locked so the two sides stay balanced.
+        </div>
+
+        <div class="modal-input-group">
+            <label>Date</label>
+            <input type="date" id="editTransDate" class="modal-input" style="letter-spacing: normal;">
+        </div>
+
+        <div class="modal-input-group edit-full-only">
+            <label>Type</label>
+            <div class="type-selector">
+                <button type="button" class="type-opt" data-edittype="INCOME" onclick="setEditTransType('INCOME')">Income</button>
+                <button type="button" class="type-opt" data-edittype="EXPENSE" onclick="setEditTransType('EXPENSE')">Expense</button>
+            </div>
+        </div>
+
+        <div class="modal-input-group">
+            <label>Category</label>
+            <select id="editTransCategory" class="modal-input" style="letter-spacing: normal; text-align: left; height: 48px;"></select>
+        </div>
+
+        <div class="modal-input-group edit-full-only">
+            <label>Account</label>
+            <select id="editTransBank" class="modal-input" style="letter-spacing: normal; text-align: left; height: 48px;"></select>
+        </div>
+
+        <div class="modal-input-group edit-full-only">
+            <label>Currency</label>
+            <select id="editTransCurrency" class="modal-input" style="letter-spacing: normal; text-align: left; height: 48px;">
+                <option value="MYR">MYR (RM)</option>
+                <option value="USD">USD ($)</option>
+                <option value="SGD">SGD ($)</option>
+                <option value="IDR">IDR (Rp)</option>
+                <option value="THB">THB (฿)</option>
+            </select>
+        </div>
+
+        <div class="modal-input-group edit-full-only">
+            <label>Amount</label>
+            <input type="number" id="editTransAmount" class="modal-input" step="0.01" placeholder="0.00" style="letter-spacing: normal; text-align: left;">
+        </div>
+
+        <div class="modal-input-group">
+            <label>Note</label>
+            <input type="text" id="editTransNote" class="modal-input" placeholder="e.g. Salary / XAUUSD" style="letter-spacing: normal; text-align: left;">
+        </div>
+
+        <div id="editTransError" class="modal-error"></div>
+        <div class="modal-actions">
+            <button class="modal-btn-cancel" onclick="closeEditTransaction()">Cancel</button>
+            <button class="modal-btn-confirm" onclick="saveEditedTransaction()">Save Changes</button>
+        </div>
     </div>
 </div>
 
@@ -1417,6 +1482,14 @@
 
         // Transactions: category name -> categoryId
         transactions.forEach(t => {
+            // Stable id so edit/delete never rely on array position, which
+            // shifts the moment a date changes and the list re-sorts.
+            if (!t.id) t.id = 'txn_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+            // Backfill the transfer flag on records made before it existed,
+            // while the note prefix is still the only evidence available.
+            if (!t.transferId && typeof t.note === 'string' && t.note.trim().startsWith('[Transfer')) {
+                t.transferId = 'tfr_legacy';
+            }
             if (!t.categoryId) {
                 const legacy = (t.category || 'OTHERS').toUpperCase();
                 let mapped = LEGACY_CATEGORY_MAP[legacy];
@@ -2022,6 +2095,187 @@
         return `${symbol} ${out}`;
     }
 
+    /* ============================================================
+       TRANSACTION MECHANICS
+       One shared implementation for currency conversion and for the
+       effect a record has on its account balance, so create / edit /
+       delete can never drift apart.
+       ============================================================ */
+
+    function toMYR(amount, curr) {
+        if (curr === 'MYR') return amount;
+        if (curr === 'USD') return amount * 4.32;
+        const rate = currencyRates[curr] || 1.0;
+        return amount * (1 / rate);
+    }
+
+    // undo = true reverses the effect instead of applying it.
+    function applyTxnEffect(t, undo) {
+        const bank = banks.find(b => b.name === t.bank);
+        if (!bank) return;
+        const dir = (t.type === 'INCOME' ? 1 : -1) * (undo ? -1 : 1);
+        bank.balance += dir * t.amount;
+    }
+
+    function getTxnById(id) {
+        return transactions.find(t => t.id === id);
+    }
+
+    // Transfers are created as a matched pair. Editing one half in
+    // isolation would leave the two accounts out of balance, so those
+    // records only allow balance-neutral fields to change.
+    // The flag is authoritative; the note prefix is only a fallback for
+    // records created before the flag existed. Sniffing text alone was
+    // fragile - editing the note could silently unlock the record.
+    function isTransferRecord(t) {
+        if (t.transferId) return true;
+        return typeof t.note === 'string' && t.note.trim().startsWith('[Transfer');
+    }
+
+    /* ---------- EDIT TRANSACTION ---------- */
+
+    let editingTxnId = null;
+    let editTransType = 'EXPENSE';
+
+    function openEditTransaction(id) {
+        const t = getTxnById(id);
+        if (!t) return;
+        if (hiddenState.history) { toggleMetric('history'); return; }
+
+        editingTxnId = id;
+        editTransType = t.type;
+        document.getElementById('editTransError').textContent = '';
+
+        const locked = isTransferRecord(t);
+        document.getElementById('editTransLockNotice').classList.toggle('hidden', !locked);
+        document.querySelectorAll('.edit-full-only').forEach(el => {
+            el.style.display = locked ? 'none' : 'block';
+        });
+
+        document.getElementById('editTransDate').value = t.date || '';
+        document.getElementById('editTransNote').value = t.note || '';
+
+        // Category is balance-neutral, so it stays editable on every record
+        // including transfer halves. Only the money-moving fields are locked.
+        populateEditCategoryDropdown(t.categoryId);
+
+        if (!locked) {
+            // Show the ORIGINAL figure the user typed, not the converted MYR
+            // value, otherwise repeated edits would drift the amount.
+            const curr = t.originalCurrency || 'MYR';
+            const amt = (t.originalAmount !== undefined && t.originalAmount !== null)
+                ? t.originalAmount : t.amount;
+            document.getElementById('editTransCurrency').value = curr;
+            document.getElementById('editTransAmount').value = amt;
+            setEditTransType(t.type);
+            populateEditBankDropdown(t.bank);
+            populateEditCategoryDropdown(t.categoryId);
+        }
+
+        document.getElementById('editTransModal').classList.remove('hidden');
+    }
+
+    function closeEditTransaction() {
+        document.getElementById('editTransModal').classList.add('hidden');
+        editingTxnId = null;
+    }
+
+    function setEditTransType(type) {
+        editTransType = type;
+        document.querySelectorAll('[data-edittype]').forEach(b => {
+            b.classList.toggle('active', b.dataset.edittype === type);
+        });
+        populateEditCategoryDropdown(null);
+    }
+
+    function populateEditCategoryDropdown(selectedId) {
+        const sel = document.getElementById('editTransCategory');
+        const prev = selectedId || sel.value;
+        sel.innerHTML = '';
+        getCategoriesByType(editTransType).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            sel.appendChild(opt);
+        });
+        if (Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+    }
+
+    function populateEditBankDropdown(selectedName) {
+        const sel = document.getElementById('editTransBank');
+        sel.innerHTML = '';
+        banks.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.name;
+            opt.textContent = b.name;
+            sel.appendChild(opt);
+        });
+        // The original account may have been deleted since; keep it listed
+        // so saving does not silently move the record somewhere else.
+        if (selectedName && !banks.some(b => b.name === selectedName)) {
+            const opt = document.createElement('option');
+            opt.value = selectedName;
+            opt.textContent = `${selectedName} (removed)`;
+            sel.appendChild(opt);
+        }
+        if (selectedName) sel.value = selectedName;
+    }
+
+    function saveEditedTransaction() {
+        const t = getTxnById(editingTxnId);
+        const errEl = document.getElementById('editTransError');
+        if (!t) { closeEditTransaction(); return; }
+
+        const newDate = document.getElementById('editTransDate').value;
+        const newNote = document.getElementById('editTransNote').value.trim();
+
+        if (!newDate) { errEl.textContent = 'Please choose a date.'; return; }
+
+        // Transfer halves: only balance-neutral fields may change.
+        if (isTransferRecord(t)) {
+            t.date = newDate;
+            t.note = newNote;
+            const cid = document.getElementById('editTransCategory').value;
+            if (cid) t.categoryId = cid;
+            closeEditTransaction();
+            renderAll();
+            showToast('Transaction updated.');
+            return;
+        }
+
+        const newCurrency = document.getElementById('editTransCurrency').value;
+        const inputAmount = parseFloat(document.getElementById('editTransAmount').value);
+        const newBank = document.getElementById('editTransBank').value;
+        const newCategoryId = document.getElementById('editTransCategory').value;
+
+        if (isNaN(inputAmount) || inputAmount <= 0) {
+            errEl.textContent = 'Please enter a valid amount greater than 0.';
+            return;
+        }
+        if (!newCategoryId) { errEl.textContent = 'Please choose a category.'; return; }
+
+        // Reconcile balances: undo the record as it stands, then apply the
+        // edited version. This handles amount, type, and account changes
+        // in one pass - including a type flip, which moves the balance by
+        // twice the amount.
+        applyTxnEffect(t, true);
+
+        t.date = newDate;
+        t.type = editTransType;
+        t.categoryId = newCategoryId;
+        t.bank = newBank;
+        t.originalCurrency = newCurrency;
+        t.originalAmount = inputAmount;
+        t.amount = toMYR(inputAmount, newCurrency);
+        t.note = newNote;
+
+        applyTxnEffect(t, false);
+
+        closeEditTransaction();
+        renderAll();
+        showToast('Transaction updated.');
+    }
+
     function formatMoney(amount) {
         const rate = currencyRates[currentCurrency] || 1.0;
         const symbol = currencySymbols[currentCurrency] || 'RM';
@@ -2253,13 +2507,7 @@
         if (!name) { errorEl.textContent = "Enter account name."; return; }
         if (isNaN(balanceInput)) { errorEl.textContent = "Enter valid balance."; return; }
 
-        let balanceInMYR = balanceInput;
-        if (bankCurr === 'USD') {
-            balanceInMYR = balanceInput * 4.32;
-        } else if (bankCurr !== 'MYR') {
-            const baseRateToMYR = 1 / (currencyRates[bankCurr] || 1.0);
-            balanceInMYR = balanceInput * baseRateToMYR;
-        }
+        const balanceInMYR = toMYR(balanceInput, bankCurr);
 
         banks.push({ name: name, balance: balanceInMYR });
         closeAddBankModal();
@@ -2332,13 +2580,7 @@
             return;
         }
 
-        let amountInMYR = inputAmount;
-        if (transferCurr === 'USD') {
-            amountInMYR = inputAmount * 4.32;
-        } else if (transferCurr !== 'MYR') {
-            const baseRateToMYR = 1 / (currencyRates[transferCurr] || 1.0);
-            amountInMYR = inputAmount * baseRateToMYR;
-        }
+        const amountInMYR = toMYR(inputAmount, transferCurr);
 
         const sourceBank = banks.find(b => b.name === fromBankName);
         const targetBank = banks.find(b => b.name === toBankName);
@@ -2358,7 +2600,11 @@
 
         const todayDate = new Date().toISOString().slice(0, 10);
 
+        const pairId = 'tfr_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
         const outTransaction = {
+            id: 'txn_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+            transferId: pairId,
             date: todayDate,
             type: 'EXPENSE',
             categoryId: 'cat_others',
@@ -2370,6 +2616,8 @@
         };
 
         const inTransaction = {
+            id: 'txn_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+            transferId: pairId,
             date: todayDate,
             type: 'INCOME',
             categoryId: 'cat_others_in',
@@ -2495,21 +2743,10 @@
         const selectedBankName = document.getElementById('transBank').value;
         const transType = document.getElementById('transType').value;
 
-        let amountInMYR = inputAmount;
-        if (transCurr === 'USD') {
-            amountInMYR = inputAmount * 4.32;
-        } else if (transCurr !== 'MYR') {
-            const baseRateToMYR = 1 / currencyRates[transCurr];
-            amountInMYR = amountInMYR * baseRateToMYR;
-        }
-
-        const targetBank = banks.find(b => b.name === selectedBankName);
-        if (targetBank) {
-            if (transType === 'INCOME') targetBank.balance += amountInMYR;
-            else targetBank.balance -= amountInMYR;
-        }
+        const amountInMYR = toMYR(inputAmount, transCurr);
 
         const newTrans = {
+            id: 'txn_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
             date: document.getElementById('transDate').value,
             type: transType,
             categoryId: document.getElementById('transCategory').value,
@@ -2520,6 +2757,7 @@
             note: document.getElementById('transNote').value.trim()
         };
 
+        applyTxnEffect(newTrans, false);
         transactions.unshift(newTrans);
         document.getElementById('transAmount').value = '';
         document.getElementById('transNote').value = '';
@@ -2579,7 +2817,6 @@
         }
 
         filteredTrans.forEach((t) => {
-            const realIndex = transactions.indexOf(t);
             const tr = document.createElement('tr');
             const isIncome = t.type === 'INCOME';
             const rawAmountFormatted = formatMoney(t.amount);
@@ -2592,21 +2829,23 @@
                 <td style="color:var(--accent-primary);">${escapeHtml(t.bank || '-')}</td>
                 <td style="color:var(--text-muted);">${escapeHtml(t.note || '-')}</td>
                 <td style="font-weight:bold; color:${isIncome ? 'var(--green)' : 'var(--red)'};">${amountStr}</td>
-                <td><button class="btn-delete" onclick="confirmDeleteTrans(${realIndex})"><i class="fa-solid fa-trash"></i></button></td>
+                <td style="white-space:nowrap;">
+                    <button class="btn-edit" title="Edit" onclick="openEditTransaction('${t.id}')"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn-delete" title="Delete" onclick="confirmDeleteTrans('${t.id}')"><i class="fa-solid fa-trash"></i></button>
+                </td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    function confirmDeleteTrans(idx) {
+    function confirmDeleteTrans(id) {
+        const t = getTxnById(id);
+        if (!t) return;
         showConfirmModal("Delete Transaction", "Are you sure you want to delete this record?", () => {
-            const t = transactions[idx];
-            const targetBank = banks.find(b => b.name === t.bank);
-            if (targetBank) {
-                if (t.type === 'INCOME') targetBank.balance -= t.amount;
-                else targetBank.balance += t.amount;
-            }
-            transactions.splice(idx, 1);
+            const target = getTxnById(id);
+            if (!target) return;
+            applyTxnEffect(target, true);
+            transactions = transactions.filter(x => x.id !== id);
             renderAll();
             showToast("Transaction deleted.");
         });
