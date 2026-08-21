@@ -6,8 +6,8 @@
     <title>Zufri Financial & Net Worth Tracker</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
     <style>
         :root {
             --bg-color: #000000;
@@ -270,7 +270,8 @@
         <div class="modal-icon" style="animation: pulseGold 2s infinite;"><i class="fa-solid fa-lock"></i></div>
         <h3 id="pinModalTitle">Vault Locked</h3>
         <p id="pinModalDesc">Enter your 4-digit security PIN to access dashboard.</p>
-        <input type="password" id="pinInput" class="modal-input pin-style" maxlength="4" placeholder="••••">
+        <!-- DIKEMASKINI DENGAN inputmode="numeric" & pattern="[0-9]*" -->
+        <input type="password" id="pinInput" class="modal-input pin-style" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••">
         <div id="modalError" class="modal-error"></div>
         <div class="modal-actions" style="grid-template-columns: 1fr;">
             <button class="modal-btn-confirm" onclick="verifyPin()">Unlock Dashboard</button>
@@ -286,11 +287,13 @@
         <p>Set a new 4-digit PIN for your vault.</p>
         <div class="modal-input-group">
             <label>Current PIN</label>
-            <input type="password" id="oldPinInput" class="modal-input pin-style" maxlength="4" placeholder="••••">
+            <!-- DIKEMASKINI DENGAN inputmode="numeric" & pattern="[0-9]*" -->
+            <input type="password" id="oldPinInput" class="modal-input pin-style" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••">
         </div>
         <div class="modal-input-group">
             <label>New PIN</label>
-            <input type="password" id="newPinInput" class="modal-input pin-style" maxlength="4" placeholder="••••">
+            <!-- DIKEMASKINI DENGAN inputmode="numeric" & pattern="[0-9]*" -->
+            <input type="password" id="newPinInput" class="modal-input pin-style" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••">
         </div>
         <div id="changePinError" class="modal-error"></div>
         <div class="modal-actions">
